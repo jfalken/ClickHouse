@@ -770,7 +770,7 @@ bool Aggregator::executeOnBlock(const Block & block, AggregatedDataVariants & re
 
         if (!result.isLowCardinality())
         {
-            auto column_no_lc = recursiveRemoveLowCardinality(key_columns[i]->getPtr()));
+            auto column_no_lc = recursiveRemoveLowCardinality(key_columns[i]->getPtr());
             if (column_no_lc.get() != key_columns[i])
             {
                 materialized_columns.emplace_back(std::move(column_no_lc));

@@ -385,10 +385,8 @@ static void convertLowCardinalityColumnsToFull(Block & block, const ColumnNumber
     {
         ColumnWithTypeAndName & column = block.getByPosition(arg);
 
-        if (auto col = recursiveRemoveLowCardinality(column.column.get()))
-            column.column = col;
-        if (auto type = recursiveRemoveLowCardinality(column.type.get()))
-            column.type = type;
+        column.column = recursiveRemoveLowCardinality(column.column);
+        column.type = recursiveRemoveLowCardinality(column.type);
     }
 }
 

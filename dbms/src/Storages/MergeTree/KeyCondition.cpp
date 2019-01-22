@@ -107,7 +107,7 @@ const KeyCondition::AtomMap KeyCondition::atom_map
 {
     {
         "notEquals",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             out.function = RPNElement::FUNCTION_NOT_IN_RANGE;
             out.range = Range(value);
@@ -116,7 +116,7 @@ const KeyCondition::AtomMap KeyCondition::atom_map
     },
     {
         "equals",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             out.function = RPNElement::FUNCTION_IN_RANGE;
             out.range = Range(value);
@@ -125,7 +125,7 @@ const KeyCondition::AtomMap KeyCondition::atom_map
     },
     {
         "less",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             out.function = RPNElement::FUNCTION_IN_RANGE;
             out.range = Range::createRightBounded(value, false);
@@ -134,7 +134,7 @@ const KeyCondition::AtomMap KeyCondition::atom_map
     },
     {
         "greater",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             out.function = RPNElement::FUNCTION_IN_RANGE;
             out.range = Range::createLeftBounded(value, false);
@@ -143,7 +143,7 @@ const KeyCondition::AtomMap KeyCondition::atom_map
     },
     {
         "lessOrEquals",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             out.function = RPNElement::FUNCTION_IN_RANGE;
             out.range = Range::createRightBounded(value, true);
@@ -152,7 +152,7 @@ const KeyCondition::AtomMap KeyCondition::atom_map
     },
     {
         "greaterOrEquals",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             out.function = RPNElement::FUNCTION_IN_RANGE;
             out.range = Range::createLeftBounded(value, true);
@@ -161,25 +161,23 @@ const KeyCondition::AtomMap KeyCondition::atom_map
     },
     {
         "in",
-        [] (RPNElement & out, const Field &, const ASTPtr & node)
+        [] (RPNElement & out, const Field &)
         {
             out.function = RPNElement::FUNCTION_IN_SET;
-            out.in_function = node;
             return true;
         }
     },
     {
         "notIn",
-        [] (RPNElement & out, const Field &, const ASTPtr & node)
+        [] (RPNElement & out, const Field &)
         {
             out.function = RPNElement::FUNCTION_NOT_IN_SET;
-            out.in_function = node;
             return true;
         }
     },
     {
         "like",
-        [] (RPNElement & out, const Field & value, const ASTPtr &)
+        [] (RPNElement & out, const Field & value)
         {
             if (value.getType() != Field::Types::String)
                 return false;
@@ -717,7 +715,7 @@ bool KeyCondition::atomFromAST(const ASTPtr & node, const Context & context, Blo
         if (!cast_not_needed)
             castValueToType(key_expr_type, const_value, const_type, node);
 
-        return atom_it->second(out, const_value, node);
+        return atom_it->second(out, const_value);
     }
     else if (getConstant(node, block_with_constants, const_value, const_type))    /// For cases where it says, for example, `WHERE 0 AND something`
     {
@@ -1016,17 +1014,12 @@ bool KeyCondition::mayBeTrueInParallelogram(const std::vector<Range> & parallelo
             element.function == RPNElement::FUNCTION_IN_SET
             || element.function == RPNElement::FUNCTION_NOT_IN_SET)
         {
-            auto in_func = typeid_cast<const ASTFunction *>(element.in_function.get());
-            const ASTs & args = typeid_cast<const ASTExpressionList &>(*in_func->arguments).children;
-            PreparedSets::const_iterator it = prepared_sets.find(args[1]->getTreeHash());
-            if (in_func && it != prepared_sets.end())
-            {
-                rpn_stack.emplace_back(element.set_index->mayBeTrueInRange(parallelogram, data_types));
-                if (element.function == RPNElement::FUNCTION_NOT_IN_SET)
-                    rpn_stack.back() = !rpn_stack.back();
-            }
-            else
+            if (!element.set_index)
                 throw Exception("Set for IN is not created yet", ErrorCodes::LOGICAL_ERROR);
+
+            rpn_stack.emplace_back(element.set_index->mayBeTrueInRange(parallelogram, data_types));
+            if (element.function == RPNElement::FUNCTION_NOT_IN_SET)
+                rpn_stack.back() = !rpn_stack.back();
         }
         else if (element.function == RPNElement::FUNCTION_NOT)
         {

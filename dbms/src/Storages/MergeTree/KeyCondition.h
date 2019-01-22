@@ -310,7 +310,6 @@ private:
         Range range;
         size_t key_column = 0;
         /// For FUNCTION_IN_SET, FUNCTION_NOT_IN_SET
-        ASTPtr in_function;
         using MergeTreeSetIndexPtr = std::shared_ptr<MergeTreeSetIndex>;
         MergeTreeSetIndexPtr set_index;
 
@@ -320,7 +319,7 @@ private:
     using RPN = std::vector<RPNElement>;
     using ColumnIndices = std::map<String, size_t>;
 
-    using AtomMap = std::unordered_map<std::string, bool(*)(RPNElement & out, const Field & value, const ASTPtr & node)>;
+    using AtomMap = std::unordered_map<std::string, bool(*)(RPNElement & out, const Field & value)>;
 
 public:
     static const AtomMap atom_map;
